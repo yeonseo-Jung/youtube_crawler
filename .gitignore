@@ -1,0 +1,46 @@
+# MacOS
+.DS_Store
+
+# vscode
+.vscode/
+
+# Python
+*.pyc
+__pycache__/
+dist/
+build/
+*.egg-info/
+_exec.py
+
+# Experiments
+tmp/
+backup/
+tbl_cache/
+
+# Jupyter notebook
+.ipynb_checkpoints
+.ipynb_checkpoints/
+*.ipynb
+
+# exec
+*.spec
+
+# config
+config/
+
+
+# ipynb, csv, text, zip
+*.ipynb
+*.xlsx
+*.csv
+*.txt
+*.zip
+
+# pem
+*.pem
+main.py
+
+# image
+*.PIL
+*.ico
+*.icns
