@@ -163,10 +163,11 @@ class AccessDataBase:
     def drop_table(self, table_name):
         ''' Drop Table '''
         
-        if table_name in self.get_tbl_name:
+        if table_name in self.get_tbl_name():
             curs = self.db_connect()
             curs.execute(f'DROP TABLE {table_name};')
             curs.close()
+            print(f'Drop Table: {table_name}')
         else:
             pass
 

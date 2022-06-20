@@ -68,7 +68,7 @@ class CrawlingYoutube:
             status = 0
         else:
             # page scroll down
-            wd = scroll_down(wd, sleep_time=2.5, check_count=10)
+            wd = scroll_down(wd, sleep_time=2.5, check_count=25)
             
             # scraping video id (href)
             soup = BeautifulSoup(wd.page_source, 'lxml')

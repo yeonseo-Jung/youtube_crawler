@@ -226,7 +226,7 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
         _scrape_df_copy_ = _scrape_df_copy.drop(drop_index).sort_values('youtuber').reset_index(drop=True)
 
         # Upload table into Database
-        columns = ['url', 'video_title', 'thumbnail', 'youtuber', 'youtuber_profile', 'script']
+        columns = ['url', 'video_title', 'video_id','thumbnail', 'youtuber', 'youtuber_profile', 'script']
         upload_df =  _scrape_df_copy_.loc[:, columns]
         
         return upload_df
@@ -323,6 +323,8 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
             pickle.dump(urls[i:], f)
         with open(self.path_output, 'wb') as f:
             pickle.dump(self.scrapes, f)
+        scrape_df = pd.DataFrame(self.scrapes, columns=['url', 'video_title', 'video_id', 'youtuber', 'script', 'thumbnail', 'youtuber_profile', 'status'])
+        scrape_df.to_csv(self.path_output_df, index=False)
         
         self.progress.emit(t)    
         self.power = False
