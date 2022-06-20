@@ -179,6 +179,9 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
         if df is None:
             status = 0
             urls = []
+        elif _df is None:
+            status = 1
+            urls = list(set(df.url.unique().tolist()))
         else:
             # dup check
             urls = list(set(df.url.unique().tolist() + _df.url.unique().tolist()))
