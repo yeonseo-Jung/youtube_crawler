@@ -40,7 +40,9 @@ class CrawlingYoutubeWindow(QMainWindow, form):
         self.viewer = None
         self.power_url = True
         self.power_crw = True
-        self.check_url = False
+        # self.check_url = False
+        self.check_url = True
+        
         
         # connect thread class 
         self.thread_url = ThreadCrawlingYoutubeUrl()
@@ -285,7 +287,6 @@ class CrawlingYoutubeWindow(QMainWindow, form):
     def _run_crw(self):
         
         if self.check_url:
-            
             if self.power_crw:
                 msg = QMessageBox()
                 msg.setText("- 인터넷 연결 확인 \n- VPN 연결 확인 \n- mac 자동 잠금 해제 확인")

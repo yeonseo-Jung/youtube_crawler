@@ -49,7 +49,8 @@ class CrawlingYoutube:
     
     def crawling_url(self, searching_word):
         searching_word = searching_word.replace(' ', '+')
-        filter_query = 'sp=EgYIBBABKAE%253D'
+        # filter_query = 'sp=EgYIBBABKAE%253D'
+        filter_query = 'sp=CAI%253D'
         search_url = f'https://www.youtube.com/results?search_query={searching_word}&{filter_query}'
         wd = get_url(search_url, window=False, image=False)
 
@@ -79,6 +80,8 @@ class CrawlingYoutube:
                 url = f'https://www.youtube.com{_id}'
                 urls.append(url)
             status = 1
+            
+        urls = urls[:350]
         return urls, status
     
     def scrape_transcripts(self, url: str) -> tuple:

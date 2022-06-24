@@ -6,6 +6,8 @@ import pickle
 import pandas as pd
 from tqdm.auto import tqdm
 from datetime import datetime
+
+import numpy as np
 from PyQt5 import QtCore
 
 import warnings
@@ -183,14 +185,18 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
             status = 1
             urls = list(set(df.url.unique().tolist()))
         else:
-            # dup check
-            urls = list(set(df.url.unique().tolist() + _df.url.unique().tolist()))
-            if len(urls) == 0:
-                status = 0
-            else:
+            if len(_df) == 0:
                 status = 1
-                with open(self.path_input, 'wb') as f:
-                    pickle.dump(urls, f)
+                urls = list(set(df.url.unique().tolist()))
+            else:
+                # dup check
+                urls = list(set(df.url.unique().tolist() + _df.url.unique().tolist()))
+                if len(urls) == 0:
+                    status = 0
+                else:
+                    status = 1
+                    with open(self.path_input, 'wb') as f:
+                        pickle.dump(urls, f)
                 
         return status, urls
     
@@ -198,6 +204,7 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
         ''' Script Preprocessing '''
 
         _scrape_df = scrape_df[scrape_df.video_title.notnull() & scrape_df.script.notnull()].reset_index(drop=True)
+        _scrape_df_null = scrape_df[scrape_df.video_title.notnull() & scrape_df.script.isnull()].reset_index(drop=True)
 
         # 영문, 특수기호(,.!?')만 추출
         reg_eng = re.compile('[^a-zA-Z0-9\.\,\?\!\']')
@@ -226,17 +233,18 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
                 else:
                     pass
 
-        _scrape_df_copy_ = _scrape_df_copy.drop(drop_index).sort_values('youtuber').reset_index(drop=True)
+        _scrape_df_copy_ = _scrape_df_copy.drop(drop_index)
+        _scrape_df_copy_concat = pd.concat([_scrape_df_copy_, _scrape_df_null]).sort_values('youtuber').reset_index(drop=True)
 
         # Upload table into Database
-        columns = ['url', 'video_title', 'video_id','thumbnail', 'youtuber', 'youtuber_profile', 'script']
-        upload_df =  _scrape_df_copy_.loc[:, columns]
+        columns = ['url', 'video_title', 'video_id','thumbnail', 'youtuber', 'youtuber_profile', 'script', 'video_type']
+        upload_df =  _scrape_df_copy_concat.loc[:, columns]
         
         return upload_df
     
     def _upload_db(self, comp=False):
         
-        scrape_df = pd.DataFrame(self.scrapes, columns=['url', 'video_title', 'video_id', 'youtuber', 'script', 'thumbnail', 'youtuber_profile', 'status'])
+        scrape_df = pd.DataFrame(self.scrapes, columns=['url', 'video_title', 'video_id', 'youtuber', 'script', 'thumbnail', 'youtuber_profile', 'status', 'video_type'])
         upload_df = self.preprocessing(scrape_df)
         upload_df.loc[:, 'regist_date'] = pd.Timestamp(self.date)
         
@@ -291,18 +299,31 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
                     * 200: url pasing successful
                     * 404: url pasing failed
                     * 403: url pasing failed
+                    *   1: shorts
                     *  -1: scraping failed
             '''
             if self.power:
                 self.check = 0
                 self.progress.emit(t)
+                
+                # scraping transcription
+                if 'shorts' in url:
+                    status, video_id, script = 1, url.replace('https://www.youtube.com/shorts/', ''), np.nan
+                    video_type = 'shorts'
+                elif 'watch?v=' in url:
+                    status, video_id, script = self.crw.scrape_transcripts(url)
+                    video_type = 'youtube'
+                else:
+                    video_id, script = np.nan, np.nan
+                    video_type = np.nan
+                    
+                # scraping video info
                 status, title, channel_name, thumbnail_img, profile_img = self.crw.parsing_url(url)
-                status, video_id, script = self.crw.scrape_transcripts(url)
-
+                
                 if (status == 404) | (status == 403) | (status == -1):
                     error.append(url)
                 else:
-                    self.scrapes.append([url, title, video_id, channel_name, script, thumbnail_img, profile_img, status])
+                    self.scrapes.append([url, title, video_id, channel_name, script, thumbnail_img, profile_img, status, video_type])
                 i += 1
             else:
                 break
@@ -314,9 +335,22 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
                 for url in t:
                     self.check = 0
                     self.progress.emit(t)
+                    
+                    # scraping transcription
+                    if 'shorts' in url:
+                        status, video_id, script = 1, url.replace('https://www.youtube.com/shorts/', ''), np.nan
+                        video_type = 'shorts'
+                    elif 'watch?v=' in url:
+                        status, video_id, script = self.crw.scrape_transcripts(url)
+                        video_type = 'youtube'
+                    else:
+                        video_id, script = np.nan, np.nan
+                        video_type = np.nan
+                        
+                    # scraping video info
                     status, title, channel_name, thumbnail_img, profile_img = self.crw.parsing_url(url)
-                    status, video_id, script = self.crw.scrape_transcripts(url)
-                    self.scrapes.append([url, title, video_id, channel_name, script, thumbnail_img, profile_img, status])
+                    
+                    self.scrapes.append([url, title, video_id, channel_name, script, thumbnail_img, profile_img, status, video_type])
             self._upload_db(comp=True)
         else:
             self._upload_db(comp=False)
@@ -326,7 +360,7 @@ class ThreadCrawlingYoutubeScript(QtCore.QThread, QtCore.QObject):
             pickle.dump(urls[i:], f)
         with open(self.path_output, 'wb') as f:
             pickle.dump(self.scrapes, f)
-        scrape_df = pd.DataFrame(self.scrapes, columns=['url', 'video_title', 'video_id', 'youtuber', 'script', 'thumbnail', 'youtuber_profile', 'status'])
+        scrape_df = pd.DataFrame(self.scrapes, columns=['url', 'video_title', 'video_id', 'youtuber', 'script', 'thumbnail', 'youtuber_profile', 'status', 'video_type'])
         scrape_df.to_csv(self.path_output_df, index=False)
         
         self.progress.emit(t)    
